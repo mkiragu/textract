@@ -18,7 +18,7 @@ app.add_middleware(CORSMiddleware, allow_origins=['*'], allow_headers=['X-Reques
 
 @app.route('/textract', methods=['POST'])
 async def textract(request):      
-    data = await request.form()
+    data = await request.json()
     file_type = data['file-type']
     file_dec = base64.b64decode(data['data'])
 
@@ -35,7 +35,7 @@ async def textract(request):
 
 @app.route('/status', methods=['GET'])
 def status(request):
-    res = {'status': 'OK let us go in guns blazing!'}
+    res = {'status': 'OK the cors should be fixed now!'}
     return JSONResponse(res)
 
 if __name__ == '__main__':
@@ -60,7 +60,7 @@ async def textract(request):
 
 @app.route('/status', methods=['GET'])
 def status(request):
-    res = {'status': 'OK let us go in guns blazing!'}
+    res = {'status': 'OK us fix the cors'}
     return JSONResponse(res)
 
 if __name__ == '__main__':
