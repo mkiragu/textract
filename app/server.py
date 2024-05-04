@@ -16,6 +16,31 @@ import base64
 app = Starlette()
 app.add_middleware(CORSMiddleware, allow_origins=['*'], allow_headers=['X-Requested-With', 'Content-Type'])
 
+@app.route('/textract', methods=['POST'])
+async def textract(request):      
+    data = await request.form()
+    file_type = data['file-type']
+    file_dec = base64.b64decode(data['data'])
+
+    suffix = f'.{file_type}'
+
+    with tempfile.NamedTemporaryFile(suffix=suffix, buffering=0) as t:
+        t.write(file_dec)
+        text = txrct.process(t.name)
+
+    resp = {'text': text.decode('utf-8')}
+    response = JSONResponse(resp)
+    response.headers['Access-Control-Allow-Origin'] = '*'
+    return response
+
+@app.route('/status', methods=['GET'])
+def status(request):
+    res = {'status': 'OK let us go in guns blazing!'}
+    return JSONResponse(res)
+
+if __name__ == '__main__':
+    if 'serve' in sys.argv:
+        uvicorn.run(app=app, host='0.0.0.0', port=int(os.environ.get('PORT', 8080)), log_level="info")
 
 
 @app.route('/textract', methods=['POST'])
@@ -35,7 +60,7 @@ async def textract(request):
 
 @app.route('/status', methods=['GET'])
 def status(request):
-    res = {'status': 'OK let us go!'}
+    res = {'status': 'OK let us go in guns blazing!'}
     return JSONResponse(res)
 
 if __name__ == '__main__':
