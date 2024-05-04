@@ -35,7 +35,7 @@ async def textract(request):
 
 @app.route('/status', methods=['GET'])
 def status(request):
-    res = {'status': 'OK'}
+    res = {'status': 'OK let us go!'}
     return JSONResponse(res)
 
 if __name__ == '__main__':
