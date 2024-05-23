@@ -1,67 +1,93 @@
+import boto3
+import requests
+from fastapi import FastAPI, Request
+from fastapi.middleware.cors import CORSMiddleware
+from io import BytesIO
+import supabase_py as supabase
+import re
 import os
 import sys
-import aiohttp
-import asyncio
+
 import uvicorn
-from starlette.applications import Starlette
-from starlette.middleware.cors import CORSMiddleware
-from starlette.responses import JSONResponse
 
-import json
-import textract as txrct
-import tempfile
-from base64 import b64decode
-import base64
+app = FastAPI()
 
-app = Starlette()
-app.add_middleware(CORSMiddleware, allow_origins=['*'], allow_headers=['X-Requested-With', 'Content-Type'])
+# Enable CORS
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
-@app.route('/textract', methods=['POST'])
-async def textract(request):      
+# Initialize AWS Textract client
+session = boto3.Session(
+    aws_access_key_id='AKIAYS2NTWQ3OACHFCD6',
+    aws_secret_access_key='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',
+    region_name='ap-south-1'
+)
+textract = session.client('textract')
+
+# Initialize Supabase client
+supabase_url = 'https://jriiagfvufqqsxdtqtom.supabase.co'
+supabase_key = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpyaWlhZ2Z2dWZxcXN4ZHRxdG9tIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MDUyMjM5MTgsImV4cCI6MjAyMDc5OTkxOH0.UpGcu9vmNU0kZVFKFYlIIENaXLL5PHTgjaxupG_Gn-k'
+supabase_client = supabase.create_client(supabase_url, supabase_key)
+table_name = 'products'
+
+# Function to check if an item contains more than 3 digits
+def has_more_than_three_digits(item):
+    return len(re.findall(r'\d', item)) > 3
+
+
+@app.post('/extract-text')
+async def extract_text(request: Request):
     data = await request.json()
-    file_type = data['file-type']
-    file_dec = base64.b64decode(data['data'])
+    image_url = data.get('image_url')
+    
+    if not image_url:
+        return {"error": "No image URL provided"}
+    
+    # Download the image
+    try:
+        response = requests.get(image_url)
+        response.raise_for_status()
+        image_bytes = BytesIO(response.content)
+    except requests.exceptions.RequestException as e:
+        return {"error": str(e)}
+    
+    # Call AWS Textract
+    try:
+        response = textract.detect_document_text(Document={'Bytes': image_bytes.getvalue()})
+    except Exception as e:
+        return {"error": str(e)}
+    
+    # Extract text blocks
+    text_blocks = [item["Text"] for item in response.get('Blocks', []) if item['BlockType'] == 'LINE'] 
+    
+    # Filter out items that are purely digits or contain more than 3 digits
+    clean_text_blocks = [
+    item for item in text_blocks
+    if not item.isdigit() and not has_more_than_three_digits(item)
+]
 
-    suffix = f'.{file_type}'
+# Clean the items and include only the first five characters
+    clean_text_blocks = [
+    item.replace('\\', '').replace('[', '').replace(']', '')
+    for item in clean_text_blocks
+]
 
-    with tempfile.NamedTemporaryFile(suffix=suffix, buffering=0) as t:
-        t.write(file_dec)
-        text = txrct.process(t.name)
+# Print the result
+    print(clean_text_blocks)
+    
+    #clean_text_blocks = [item for item in text_blocks if not item.isdigit()]
+    #clean_text_blocks = [item.replace('\\', '').replace('[', '').replace(']', '') for item in clean_text_blocks]
+    #print(clean_text_blocks)
+    print('That was clean_text_blocks\n')
+    data = supabase_client.table(table_name).select('*').in_('Item', clean_text_blocks).execute()
+    
+    print(data, "  This was data")
+    return data
 
-    resp = {'text': text.decode('utf-8')}
-    response = JSONResponse(resp)
-    response.headers['Access-Control-Allow-Origin'] = '*'
-    return response
-
-@app.route('/status', methods=['GET'])
-def status(request):
-    res = {'status': 'OK the cors should be fixed now!'}
-    return JSONResponse(res)
-
-if __name__ == '__main__':
-    if 'serve' in sys.argv:
-        uvicorn.run(app=app, host='0.0.0.0', port=int(os.environ.get('PORT', 8080)), log_level="info")
-
-
-@app.route('/textract', methods=['POST'])
-async def textract(request):      
-    data = await request.form()
-    file_type = data['file-type']
-    file_dec = base64.b64decode(data['data'])
-
-    suffix = f'.{file_type}'
-
-    with tempfile.NamedTemporaryFile(suffix=suffix, buffering=0) as t:
-        t.write(file_dec)
-        text = txrct.process(t.name)
-
-    resp = {'text': text.decode('utf-8')}
-    return JSONResponse(resp)
-
-@app.route('/status', methods=['GET'])
-def status(request):
-    res = {'status': 'OK us fix the cors'}
-    return JSONResponse(res)
 
 if __name__ == '__main__':
     if 'serve' in sys.argv:
