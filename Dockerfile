@@ -1,9 +1,9 @@
 FROM python:3.8-buster
 
-RUN apt-get update && apt-get install -y libxml2-dev libxslt1-dev antiword unrtf poppler-utils tesseract-ocr \
-flac ffmpeg lame libmad0 libsox-fmt-mp3 sox libjpeg-dev swig 
+RUN apt-get update && apt-get install -y 
 
-RUN pip install aiohttp boto3 fastapi aiofiles uvicorn starlette supabase_py python-pptx xlrd docx2txt requests
+
+RUN pip install  boto3 fastapi uvicorn supabase_py python-pptx   requests
 
 WORKDIR /workdir 
 COPY app /workdir/
