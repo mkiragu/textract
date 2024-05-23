@@ -91,4 +91,4 @@ async def extract_text(request: Request):
 
 if __name__ == '__main__':
     if 'serve' in sys.argv:
-        uvicorn.run(app=app, host='0.0.0.0', port=int(os.environ.get('PORT', 8080)), log_level="info")
+        uvicorn.run(app=app, host='0.0.0.0', port=int(os.environ.get('PORT', 443)), log_level="info")
