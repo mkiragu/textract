@@ -3,7 +3,7 @@ FROM python:3.8-buster
 RUN apt-get update && apt-get install -y 
 
 
-RUN pip install  boto3 fastapi supabase_py requests
+RUN pip install  boto3 fastapi supabase_py requests uvicorn
 
 WORKDIR /workdir 
 COPY app /workdir/
